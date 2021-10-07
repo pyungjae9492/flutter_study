@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:my_flutter_app/sub/firstPage.dart';
-import 'package:my_flutter_app/sub/secondPage.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() {
   runApp(MyApp());
@@ -10,129 +10,98 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: MyHomePage(),
+      home: HttpApp(),
     );
   }
 }
 
-
-/// 4-1 Stateful Widget 생성해보기 ///
-class MaterialFlutterApp extends StatefulWidget {
+class HttpApp extends StatefulWidget {
   @override
-  State<StatefulWidget> createState() {
-    return _MaterialFlutterApp();
-  }
-
+  State<StatefulWidget> createState() => _HttpApp();
 }
 
-class _MaterialFlutterApp extends State<MaterialFlutterApp> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("PJ's App")),
-      floatingActionButton: FloatingActionButton(child: const Icon(Icons.add), onPressed: () {}),
-      body: Container(
-        child: Center(
-          child: Column(
-            children: <Widget>[
-              const Icon(Icons.analytics),
-              const Text('Hi'),
-              ],
-              mainAxisAlignment: MainAxisAlignment.center,
-          ),
-        )
-      ),
-    );
-  } 
-}
-
-/// 4-3 계산기 만들어보기 /// 
-class WidgetApp extends StatefulWidget{
-  @override
-  _WidgetExampleState createState() => _WidgetExampleState();
-}
-
-class _WidgetExampleState extends State<WidgetApp> {
-  String sum = '';
-  TextEditingController value1 = TextEditingController();
-  TextEditingController value2 = TextEditingController();
-  @override
-  Widget build(BuildContext context) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Example')),
-        body: Container(
-          child: Center(
-            child: Column(
-              children: <Widget>[
-                Padding(padding: EdgeInsets.all(10)),
-                Text('flutter'),
-                Padding(padding: EdgeInsets.all(10)),
-                TextField(keyboardType: TextInputType.number, controller: value1),
-                Padding(padding: EdgeInsets.all(10)),
-                TextField(keyboardType: TextInputType.number, controller: value2),
-                Padding(padding: EdgeInsets.all(10)),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      int result = int.parse(value1.value.text) + int.parse(value2.value.text);
-                      sum = '$result';
-                    });
-                  },
-                  child: Row(
-                    children: <Widget>[
-                      Icon(Icons.add),
-                      Text('더하기'),
-                    ],
-                )),
-                Padding(padding: EdgeInsets.all(10)),
-                Text('$sum', style: TextStyle(fontSize:20)),
-                Padding(padding: EdgeInsets.all(10)),
-              ],
-            ),
-          ),
-        ),
-      );
-  }
-}
-
-/// 5-1 탭 바로 화면 이동하기 ///
-class MyHomePage extends StatefulWidget {
-  @override
-  _MyHomePageState createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage>
-    with SingleTickerProviderStateMixin {
-  late TabController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: TabBarView(
-        children: <Widget>[WidgetApp(), MaterialFlutterApp()],
-        controller: controller,
-      ),
-      bottomNavigationBar: TabBar(tabs: <Tab>[
-        Tab(icon: Icon(Icons.looks_one, color: Colors.blue)),
-        Tab(icon: Icon(Icons.looks_two, color: Colors.red)),
-        ], controller: controller,
-      ),
-    );
-  }
+class _HttpApp extends State<HttpApp> {
+  String result = '';
+  List data = [];
+  TextEditingController _editingController = new TextEditingController();///// 여기서는 어떻게?
 
   @override
   void initState() {
     super.initState();
-    controller = TabController(length: 2, vsync: this);
+    // data = new List();
+    _editingController = new TextEditingController();
   }
 
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+      ),
+      body: Container(
+        child: Center(
+          child: data.length == 0
+              ? TextField(
+                  controller: _editingController,
+                  style: TextStyle(color: Colors.white),
+                  keyboardType: TextInputType.text,
+                  decoration: InputDecoration(hintText: '검색어를 입력하세요'),
+                )
+              : ListView.builder(
+                  itemBuilder: (context, index) {
+                    return Card(
+                      child: Container(
+                          child: Row(
+                        children: <Widget>[
+                          Image.network(
+                            data[index]['thumbnail'],
+                            height: 100,
+                            width: 100,
+                            fit: BoxFit.contain,
+                          ),
+                          Column(
+                            children: <Widget>[
+                              Container(
+                                width: MediaQuery.of(context).size.width - 150,
+                                child: Text(
+                                  data[index]['title'].toString(),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              Text('저자 : ${data[index]['authors'].toString()}'),
+                              Text(
+                                  '가격 : ${data[index]['sale_price'].toString()}'),
+                              Text('판매중 : ${data[index]['status'].toString()}'),
+                            ],
+                          )
+                        ],
+                        mainAxisAlignment: MainAxisAlignment.start,
+                      )),
+                    );
+                    // );
+                  },
+                  itemCount: data.length),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          getJSONData();
+        },
+        child: Icon(Icons.file_download),
+      ),
+    );
+  }
+
+  Future<String> getJSONData() async {
+    var url = 'https://dapi.kakao.com/v3/search/book?'
+              'target=title&query=${_editingController.value.text}';
+
+    var response = await http.get(Uri.parse(Uri.encodeFull(url)),
+        headers: {"Authorization": "KakaoAK 132c3626d63806fd15a9c0a734f35819"});
+    print(response.body);
+    setState(() {
+      var dataConvertedToJson = json.decode(response.body);
+      List result = dataConvertedToJson['documents'];
+      data.addAll(result);
+    });
+    return response.body;
   }
 }
